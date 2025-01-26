@@ -1,5 +1,19 @@
 // Include the Alexa SDK v2
 const Alexa = require("ask-sdk-core");
+const actions = require("./functions");
+
+const Quotes = {
+  Lincoln: [
+    "Government of the people, by the people, for the people, shall not perish from the Earth.",
+    "Nearly all men can stand adversity, but if you want to test a man's character, give him power.",
+    "Whatever you are, be a good one."
+  ],
+  Einstein: [
+    "Imagination is more important than knowledge.",
+    "If the facts don't fit the theory, change the facts.",
+    "Life is like riding a bicycle. To keep your balance you must keep moving."
+  ]
+};
 
 // The "LaunchRequest" intent handler - called when the skill is launched
 const LaunchRequestHandler = {
@@ -26,7 +40,9 @@ const RandomQuote = {
     );
   },
   handle(handlerInput) {
-    const speechText = "This will be a random quote eventually.";
+//    const speechText = "This will be a random quote eventually.";
+    [author, quote] = actions.getQuote(Quotes)
+    const speechText = `${author} said ${quote}`;
 
     // Speak out the speechText via Alexa
     return handlerInput.responseBuilder
