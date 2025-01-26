@@ -1,23 +1,7 @@
-resource "aws_iam_policy" "function_logging_policy" {
-  name   = "function-logging-policy"
-  policy = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
-      {
-        Action : [
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ],
-        Effect : "Allow",
-        Resource : "arn:aws:logs:*:*:*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "function_logging_policy_attachment" {
-  role       = aws_iam_role.iam_for_lambda.id
-  policy_arn = aws_iam_policy.function_logging_policy.arn
+# courtesy https://github.com/amancevice/terraform-aws-lambda-basic-execution-role/blob/d6985813d378e0f57e00be36649c3c77aad23258/main.tf#L28-L31
+resource "aws_iam_role_policy_attachment" "basic" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.role_for_lambda.name
 }
 
 resource "aws_cloudwatch_log_group" "lambda_log_group" {
