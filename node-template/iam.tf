@@ -23,4 +23,6 @@ resource "aws_lambda_permission" "with_alexa" {
   action        = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.alexa_lambda.function_name}"
   principal     = "alexa-appkit.amazon.com"
+
+  event_source_token =  local.config.hows_your_day.skill.id
 }
