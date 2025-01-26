@@ -46,5 +46,5 @@ const RequestLog = {
 // Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
   .addRequestHandlers(LaunchRequestHandler, RandomQuote)
-//  .addRequestInterceptors(RequestLog)
+  .addRequestInterceptors(RequestLog)
   .lambda();
