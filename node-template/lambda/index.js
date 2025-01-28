@@ -40,13 +40,39 @@ const RandomQuote = {
     );
   },
   handle(handlerInput) {
-//    const speechText = "This will be a random quote eventually.";
-    [author, quote] = actions.getQuote(Quotes)
+    const [author, quote] = actions.getQuote(Quotes)
     const speechText = `${author} said ${quote}`;
 
+    const cardTitle = `Quotation from ${author}`;
+    const cardContent = quote;
     // Speak out the speechText via Alexa
     return handlerInput.responseBuilder
       .speak(speechText)
+      .withSimpleCard(cardTitle, cardContent)
+      .withShouldEndSession(true)
+      .getResponse();
+  }
+};
+
+const AuthorQuote = {
+  canHandle(handlerInput) {
+    return (
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "AuthorQuote"
+    );
+  },
+  handle(handlerInput) {
+    const author = handlerInput.requestEnvelope.request.intent.slots.author.value;
+    console.log(`AuthorQuote: ${author}`);
+    const [, quote] = actions.getQuote(Quotes, author)
+    const speechText = `${author} said ${quote}`;
+
+    const cardTitle = `Quotation from ${author}`;
+    const cardContent = quote;
+    // Speak out the speechText via Alexa
+    return handlerInput.responseBuilder
+      .speak(speechText)
+      .withSimpleCard(cardTitle, cardContent)
       .withShouldEndSession(true)
       .getResponse();
   }
@@ -61,6 +87,6 @@ const RequestLog = {
 
 // Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
-  .addRequestHandlers(LaunchRequestHandler, RandomQuote)
+  .addRequestHandlers(LaunchRequestHandler, RandomQuote, AuthorQuote)
   .addRequestInterceptors(RequestLog)
   .lambda();
