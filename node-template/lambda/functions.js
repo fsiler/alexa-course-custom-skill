@@ -19,11 +19,13 @@ const myfunctions = {
       'albert einstein': 'Einstein',
     }
     const lookupAuthor = mapping[author.toLowerCase()];
-    console.log(`author ${author}, lookupAuthor ${lookupAuthor}`);
+    if(lookupAuthor === undefined) {
+      return [false, undefined]
+    }
 
     const numQuotes = quotes[lookupAuthor].length;
     const lookupIndex = Math.floor(Math.random() * numQuotes);
-    const quote = quotes[lookupAuthor][lookupIndex] || "Sorry, I couldn't find a quote by that author";
+    const quote = quotes[lookupAuthor][lookupIndex]
     return [lookupAuthor, quote];
   }
 }

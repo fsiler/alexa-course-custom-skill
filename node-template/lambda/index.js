@@ -45,16 +45,34 @@ const AuthorQuote = {
   handle(handlerInput) {
     const request = handlerInput.requestEnvelope.request;
     const authorCandidate = request.intent?.slots?.author?.value;
+
     const [responseAuthor, quote] = actions.getQuote(Quotes, authorCandidate)
+    if (!responseAuthor) {
+      return UnhandledHandler.handle(handlerInput);
+    }
+
     const speechText = `${responseAuthor} said ${quote}`;
 
     const cardTitle = `Quotation from ${responseAuthor}`;
     const cardContent = quote;
+
     // Speak out the speechText via Alexa
     return handlerInput.responseBuilder
       .speak(speechText)
       .withSimpleCard(cardTitle, cardContent)
       .withShouldEndSession(true)
+      .getResponse();
+  }
+};
+
+const UnhandledHandler = {
+  canHandle() {
+    return true;
+  },
+  handle(handlerInput, error) {
+    console.log(`Error Handler: ${error}`);
+    return handlerInput.responseBuilder
+      .speak(`Sorry, I can't understand.  You can ask me to say a random quotation.`)
       .getResponse();
   }
 };
@@ -69,5 +87,6 @@ const RequestLog = {
 // Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
   .addRequestHandlers(LaunchRequestHandler, AuthorQuote)
+  .addErrorHandlers(UnhandledHandler)
   .addRequestInterceptors(RequestLog)
   .lambda();
