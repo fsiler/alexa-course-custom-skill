@@ -32,42 +32,23 @@ const LaunchRequestHandler = {
   }
 };
 
-const RandomQuote = {
-  canHandle(handlerInput) {
-    return (
-      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
-      handlerInput.requestEnvelope.request.intent.name === "RandomQuote"
-    );
-  },
-  handle(handlerInput) {
-    const [author, quote] = actions.getQuote(Quotes)
-    const speechText = `${author} said ${quote}`;
-
-    const cardTitle = `Quotation from ${author}`;
-    const cardContent = quote;
-    // Speak out the speechText via Alexa
-    return handlerInput.responseBuilder
-      .speak(speechText)
-      .withSimpleCard(cardTitle, cardContent)
-      .withShouldEndSession(true)
-      .getResponse();
-  }
-};
-
 const AuthorQuote = {
   canHandle(handlerInput) {
+    const request = handlerInput.requestEnvelope.request;
     return (
-      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
-      handlerInput.requestEnvelope.request.intent.name === "AuthorQuote"
+      request.type === "IntentRequest" && (
+        request.intent.name === "AuthorQuote" ||
+        request.intent.name === "RandomQuote"
+      )
     );
   },
   handle(handlerInput) {
-    const author = handlerInput.requestEnvelope.request.intent.slots.author.value;
-    console.log(`AuthorQuote: ${author}`);
-    const [, quote] = actions.getQuote(Quotes, author)
-    const speechText = `${author} said ${quote}`;
+    const request = handlerInput.requestEnvelope.request;
+    const authorCandidate = request.intent?.slots?.author?.value;
+    const [responseAuthor, quote] = actions.getQuote(Quotes, authorCandidate)
+    const speechText = `${responseAuthor} said ${quote}`;
 
-    const cardTitle = `Quotation from ${author}`;
+    const cardTitle = `Quotation from ${responseAuthor}`;
     const cardContent = quote;
     // Speak out the speechText via Alexa
     return handlerInput.responseBuilder
@@ -87,6 +68,6 @@ const RequestLog = {
 
 // Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
-  .addRequestHandlers(LaunchRequestHandler, RandomQuote, AuthorQuote)
+  .addRequestHandlers(LaunchRequestHandler, AuthorQuote)
   .addRequestInterceptors(RequestLog)
   .lambda();
