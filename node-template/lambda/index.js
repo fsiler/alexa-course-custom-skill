@@ -1,5 +1,8 @@
-// Include the Alexa SDK v2
-const Alexa = require("ask-sdk-core");
+const Alexa   = require("ask-sdk-core");
+const AWSXRay = require('aws-xray-sdk-core');
+//AWSXRay.enableManualMode();
+AWSXRay.captureAWS(require('aws-sdk'));
+
 const actions = require("./functions");
 
 const Quotes = {
@@ -21,14 +24,23 @@ const LaunchRequestHandler = {
     return handlerInput.requestEnvelope.request.type === "LaunchRequest";
   },
   handle(handlerInput) {
+    let mySubSegment = AWSXRay.getSegment().addNewSubsegment('LaunchRequestHandler');
+    mySubSegment.addAnnotation('handler', 'launchHandler');
+    mySubSegment.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
     const speechText = "Hello, I am a sample template and Frank edited me again.";
     const repromptText = "Sorry, I didn't catch that.  You can say, tell me a random quote";
 
+    mySubSegment.addMetadata('speakOutput', speechText);
+
     // Speak out the speechText via Alexa
-    return handlerInput.responseBuilder
+    const handlerResponse = handlerInput.responseBuilder
       .speak(speechText)
       .reprompt(repromptText)
       .getResponse();
+
+    mySubSegment.close();
+    return handlerResponse;
   }
 };
 

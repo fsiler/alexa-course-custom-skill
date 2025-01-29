@@ -12,7 +12,10 @@ data "archive_file" "lambda" {
 }
 
 resource "aws_lambda_function" "alexa_lambda" {
-  depends_on = [aws_cloudwatch_log_group.lambda_log_group]
+  depends_on     = [aws_cloudwatch_log_group.lambda_log_group]
+  lifecycle {
+    ignore_changes = [environment, layers]
+  }
   # If the file is not in the current working directory you will need to include a
   # path.module in the filename.
 
