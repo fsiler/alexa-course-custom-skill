@@ -1,7 +1,7 @@
 const Alexa   = require("ask-sdk-core");
 const AWSXRay = require('aws-xray-sdk-core');
-//AWSXRay.enableManualMode();
-AWSXRay.captureAWS(require('aws-sdk'));
+AWSXRay.enableManualMode();
+//AWSXRay.captureAWS(require('aws-sdk'));  # Lots of overhead if you do this.
 
 const actions = require("./functions");
 
@@ -24,14 +24,16 @@ const LaunchRequestHandler = {
     return handlerInput.requestEnvelope.request.type === "LaunchRequest";
   },
   handle(handlerInput) {
-    let mySubSegment = AWSXRay.getSegment().addNewSubsegment('LaunchRequestHandler');
-    mySubSegment.addAnnotation('handler', 'launchHandler');
-    mySubSegment.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+    const segment = new AWSXRay.Segment('LauchRequestHandler');
+//    const mySubSegment = segment.getSugsegment('LauchRequestHandler');
+//    mySubSegment.addAnnotation('handler', 'launchHandler');
+//    mySubSegment.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+    segment.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const speechText = "Hello, I am a sample template and Frank edited me again.";
     const repromptText = "Sorry, I didn't catch that.  You can say, tell me a random quote";
 
-    mySubSegment.addMetadata('speakOutput', speechText);
+//    mySubSegment.addMetadata('speakOutput', speechText);
 
     // Speak out the speechText via Alexa
     const handlerResponse = handlerInput.responseBuilder
@@ -39,7 +41,8 @@ const LaunchRequestHandler = {
       .reprompt(repromptText)
       .getResponse();
 
-    mySubSegment.close();
+    segment.close(); segment.flush();
+//    mySubSegment.close();
     return handlerResponse;
   }
 };
@@ -55,8 +58,14 @@ const AuthorQuote = {
     );
   },
   handle(handlerInput) {
+    const segment = new AWSXRay.Segment('AuthorQuote');
+    segment.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
     const request = handlerInput.requestEnvelope.request;
+    segment.addAnnotation('intent', request.intent.name);
+
     const authorCandidate = request.intent?.slots?.author?.value;
+    segment.addAnnotation('authorCandidate', authorCandidate);
 
     const [responseAuthor, quote] = actions.getQuote(Quotes, authorCandidate)
     if (!responseAuthor) {
@@ -64,16 +73,22 @@ const AuthorQuote = {
     }
 
     const speechText = `${responseAuthor} said ${quote}`;
+    segment.addAnnotation('responseAuthor', responseAuthor);
 
     const cardTitle = `Quotation from ${responseAuthor}`;
     const cardContent = quote;
 
+    segment.addAnnotation('quote', quote);
+
     // Speak out the speechText via Alexa
-    return handlerInput.responseBuilder
+    const handlerResponse = handlerInput.responseBuilder
       .speak(speechText)
       .withSimpleCard(cardTitle, cardContent)
       .withShouldEndSession(true)
       .getResponse();
+    segment.close(); segment.flush();
+
+    return handlerResponse;
   }
 };
 
