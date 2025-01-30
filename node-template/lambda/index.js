@@ -2,7 +2,8 @@ const Alexa   = require("ask-sdk-core");
 const AWSXRay = require('aws-xray-sdk-core');
 AWSXRay.enableManualMode();
 //AWSXRay.captureAWS(require('aws-sdk'));  # Lots of overhead if you do this.
-const segment = new AWSXRay.Segment('Frank Demo');
+
+var segment;
 
 const actions = require("./functions");
 
@@ -26,6 +27,7 @@ const LaunchRequestHandler = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('LauchRequestHandler');
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
     ss.addAnnotation('handler', 'launchHandler');
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
@@ -57,13 +59,15 @@ const AuthorQuote = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('AuthorQuote');
-    segment.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const request = handlerInput.requestEnvelope.request;
-    segment.addAnnotation('intent', request.intent.name);
+    ss.addAnnotation('intent', request.intent.name);
 
     const authorCandidate = request.intent?.slots?.author?.value;
-    segment.addAnnotation('authorCandidate', authorCandidate);
+    if(authorCandidate !== undefined) { ss.addAnnotation('authorCandidate', authorCandidate); }
 
     const [responseAuthor, quote] = actions.getQuote(Quotes, authorCandidate)
     if (!responseAuthor) {
@@ -72,7 +76,7 @@ const AuthorQuote = {
     }
 
     const speechText = `${responseAuthor} said ${quote}`;
-    segment.addAnnotation('responseAuthor', responseAuthor);
+    ss.addAnnotation('responseAuthor', responseAuthor);
 
     const cardTitle = `Quotation from ${responseAuthor}`;
     const cardContent = quote;
@@ -97,6 +101,7 @@ const UnhandledHandler = {
   },
   handle(handlerInput, error) {
     const ss = segment.addNewSubsegment('UnhandledHandler');
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
     ss.addError(error);
     ss.addErrorFlag();
     const handlerResponse = handlerInput.responseBuilder
@@ -111,8 +116,35 @@ const UnhandledHandler = {
 
 const RequestLog = {
   process(handlerInput) {
-//    console.log("REQUEST ENVELOPE = " + JSON.stringify(handlerInput.requestEnvelope));
-    segment.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    // for reasons that are mysterious to me, the environment variables do get
+    // set at the top of the module, with the exception of _X_AMZN_TRACE_ID,
+    // which I need, and is available here.
+    const traceId = process.env._X_AMZN_TRACE_ID;
+
+    // It is also weird to me that I need to manually decompose
+    // _X_AMZN_TRACE_ID in order to be able to hand it off to their library.
+    const parts = traceId.split(';');
+
+    const rootPart    = parts.find(part => part.startsWith('Root='));
+    const parentPart  = parts.find(part => part.startsWith('Parent='));
+    const lineagePart = parts.find(part => part.startsWith('Lineage='));
+
+    const root    = rootPart    ? rootPart.split('=')[1]    : null;
+    const parent  = parentPart  ? parentPart.split('=')[1]  : null;
+    const lineage = lineagePart ? lineagePart.split('=')[1] : null;
+
+    segment = new AWSXRay.Segment('Frank Demo', root, parent);
+
+    segment.addAnnotation('_X_AMZN_TRACE_ID', traceId);
+//    segment.addAnnotation('traceParent', parent);
+//    segment.addAnnotation('traceRoot',   root);
+    segment.addAnnotation('traceLineage',lineage);
+    segment.addAnnotation('sessionId', handlerInput?.requestEnvelope?.session?.sessionId)
+
+    segment.addAnnotation('awsRequestId', handlerInput.context.awsRequestId);
+
+    segment.addMetadata('env', JSON.stringify(process.env));
+    segment.addMetadata('context', JSON.stringify(handlerInput.context));
   }
 };
 

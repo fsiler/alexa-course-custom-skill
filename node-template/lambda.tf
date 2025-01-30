@@ -1,10 +1,3 @@
-variable "lambda" {
-  type = map
-  default = {
-    function_name = "alexa_lambda"
-  }
-}
-
 data "archive_file" "lambda" {
   type        = "zip"
   source_dir  = "./lambda"
@@ -20,7 +13,7 @@ resource "aws_lambda_function" "alexa_lambda" {
   # path.module in the filename.
 
   filename       = "lambda_function_payload.zip"
-  function_name  = var.lambda.function_name
+  function_name  = local.config.hows_your_day.lambda.name
   role           = aws_iam_role.role_for_lambda.arn
   handler        = "index.handler"
 
@@ -31,7 +24,6 @@ resource "aws_lambda_function" "alexa_lambda" {
 
   environment {
     variables = {
-      foo = "bar"
     }
   }
 }

@@ -6,7 +6,7 @@ resource "aws_iam_role_policy_attachment" "basic" {
 }
 
 resource "aws_cloudwatch_log_group" "lambda_log_group" {
-  name              = "/aws/lambda/${var.lambda.function_name}"
+  name              = "/aws/lambda/${local.config.hows_your_day.lambda.name}"
   retention_in_days = 7
   lifecycle {
     prevent_destroy = false

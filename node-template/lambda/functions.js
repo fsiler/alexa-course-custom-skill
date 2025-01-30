@@ -1,7 +1,5 @@
 const myfunctions = {
   getQuote: function(quotes, author) {
-    console.log("quoteFunction");
-
     if(author === undefined) {
        const totalauthors = Object.keys(quotes).length;
        const rand = Math.floor(Math.random() * totalauthors);
