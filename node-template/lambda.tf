@@ -23,8 +23,11 @@ resource "aws_lambda_function" "alexa_lambda" {
   architectures  = ["arm64"]
 
   environment {
-    variables = {
-    }
+    variables = { }
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 }
 
