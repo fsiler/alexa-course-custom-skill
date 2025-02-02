@@ -31,8 +31,8 @@ const LaunchRequestHandler = {
     ss.addAnnotation('handler', 'launchHandler');
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
-    const speechText = "Hello, I am a sample template and Frank edited me again.";
-    const repromptText = "Sorry, I didn't catch that.  You can say, tell me a random quote";
+    const speechText = "Hi I am Frank Demo, your cloud based personal assistant.  You can ask me to read quotes from Einstein or Lincoln, or ask me to get route information.";
+    const repromptText = "Sorry, I didn't catch that.  Do you need help?";
 
     ss.addMetadata('quote', speechText);
 
@@ -105,7 +105,7 @@ const UnhandledHandler = {
     ss.addError(error);
     ss.addErrorFlag();
     const handlerResponse = handlerInput.responseBuilder
-      .speak(`Sorry, I can't understand.  You can ask me to say a random quotation.`)
+      .speak(`Sorry, I can't understand.  Do you need help?`)
       .getResponse();
 
     ss.close();
@@ -114,37 +114,10 @@ const UnhandledHandler = {
   }
 };
 
+// courtesy https://developer.amazon.com/en-US/blogs/alexa/post/0e2015e1-8be3-4513-94cb-da000c2c9db0/what-s-new-with-request-and-response-interceptors-in-the-alexa-skills-kit-sdk-for-node-j
 const RequestLog = {
   process(handlerInput) {
-    // for reasons that are mysterious to me, the environment variables do get
-    // set at the top of the module, with the exception of _X_AMZN_TRACE_ID,
-    // which I need, and is available here.
-    const traceId = process.env._X_AMZN_TRACE_ID;
-
-    // It is also weird to me that I need to manually decompose
-    // _X_AMZN_TRACE_ID in order to be able to hand it off to their library.
-    const parts = traceId.split(';');
-
-    const rootPart    = parts.find(part => part.startsWith('Root='));
-    const parentPart  = parts.find(part => part.startsWith('Parent='));
-    const lineagePart = parts.find(part => part.startsWith('Lineage='));
-
-    const root    = rootPart    ? rootPart.split('=')[1]    : null;
-    const parent  = parentPart  ? parentPart.split('=')[1]  : null;
-    const lineage = lineagePart ? lineagePart.split('=')[1] : null;
-
-    segment = new AWSXRay.Segment('Frank Demo', root, parent);
-
-    segment.addAnnotation('_X_AMZN_TRACE_ID', traceId);
-//    segment.addAnnotation('traceParent', parent);
-//    segment.addAnnotation('traceRoot',   root);
-    segment.addAnnotation('traceLineage',lineage);
-    segment.addAnnotation('sessionId', handlerInput?.requestEnvelope?.session?.sessionId)
-
-    segment.addAnnotation('awsRequestId', handlerInput.context.awsRequestId);
-
-    segment.addMetadata('env', JSON.stringify(process.env));
-    segment.addMetadata('context', JSON.stringify(handlerInput.context));
+    console.log("REQUEST ENVELOPE = " + JSON.stringify(handlerInput.requestEnvelope));
   }
 };
 
