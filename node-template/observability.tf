@@ -5,6 +5,7 @@ resource "aws_iam_role_policy_attachment" "basic" {
   role       = aws_iam_role.role_for_lambda.name
 }
 
+# https://gist.github.com/mdlavin/1b8fcc1b05932f6c105fb7c4ad34c204
 resource "aws_iam_role_policy_attachment" "aws_xray_write_only_access" {
   policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
   role       = aws_iam_role.role_for_lambda.name

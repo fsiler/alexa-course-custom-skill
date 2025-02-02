@@ -7,7 +7,7 @@ data "archive_file" "lambda" {
 resource "aws_lambda_function" "alexa_lambda" {
   depends_on     = [aws_cloudwatch_log_group.lambda_log_group]
   lifecycle {
-    ignore_changes = [environment, layers]
+    ignore_changes = [layers]
   }
   # If the file is not in the current working directory you will need to include a
   # path.module in the filename.
@@ -23,7 +23,9 @@ resource "aws_lambda_function" "alexa_lambda" {
   architectures  = ["arm64"]
 
   environment {
-    variables = { }
+    variables = {
+      SKILL_NAME = local.config.hows_your_day.skill_name
+    }
   }
 
   tracing_config {
