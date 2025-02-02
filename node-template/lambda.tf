@@ -24,7 +24,8 @@ resource "aws_lambda_function" "alexa_lambda" {
 
   environment {
     variables = {
-      SKILL_NAME = local.config.hows_your_day.skill_name
+      SKILL_NAME     = local.config.hows_your_day.skill_name
+      GOOGLE_API_KEY = local.config.hows_your_day.google.api_key
     }
   }
 

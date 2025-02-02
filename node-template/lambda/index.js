@@ -7,6 +7,30 @@ var segment;
 
 const actions = require("./functions");
 
+const user_origin = "38.6774017,-90.3959057";
+const Bookmarks = {
+  "my parents": "38.8052151,-90.5672943",
+  "my in laws": "38.6082336,-90.5332682",
+  "the airport": "38.7505605,-90.3814042"
+};
+var user_destination = "XXXXXX"; // keep it as XXXXXX as it will be replaced later
+const google_api_key = process.env.GOOGLE_API_KEY;
+
+const google_api_traffic_model = "best_guess"; // it can be optimistic & pessimistic too
+const google_api_departure_time = "now"; // now will mean the current time
+
+const google_api_host = "maps.googleapis.com";
+var google_api_path = "/maps/api/directions/json?origin=" +
+  user_origin +
+  "&destination=" +
+  user_destination +
+  "&key=" +
+  google_api_key +
+  "&traffic_model=" +
+  google_api_traffic_model +
+  "&departure_time=" +
+  google_api_departure_time;
+
 const Quotes = {
   Lincoln: [
     "Government of the people, by the people, for the people, shall not perish from the Earth.",
@@ -31,7 +55,7 @@ const LaunchRequestHandler = {
     ss.addAnnotation('handler', 'launchHandler');
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
-    const speechText = "Hi I am Frank Demo, your cloud based personal assistant.  You can ask me to read quotes from Einstein or Lincoln, or ask me to get route information.";
+    const speechText = `Hi I am ${process.env.SKILL_NAME}, your cloud based personal assistant.  You can ask me to read quotes from Einstein or Lincoln, or ask me to get route information.`;
     const repromptText = "Sorry, I didn't catch that.  Do you need help?";
 
     ss.addMetadata('quote', speechText);
@@ -88,6 +112,39 @@ const AuthorQuote = {
       .speak(speechText)
       .withSimpleCard(cardTitle, cardContent)
       .withShouldEndSession(true)
+      .getResponse();
+
+    ss.close();
+    return handlerResponse;
+  }
+};
+
+const GetBookmarks = {
+  canHandle(handlerInput) {
+    return (
+        handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+        handlerInput.requestEnvelope.request.intent.name === "GetBookmarks"
+        );
+  },
+  handle(handlerInput) {
+    const ss = segment.addNewSubsegment('GetBookmarks');
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
+    const request = handlerInput.requestEnvelope.request;
+    ss.addAnnotation('intent', request.intent.name);
+
+    const keys = Object.keys(Bookmarks)
+    const destinations = keys.length > 1
+      ? keys.slice(0, -1).join(", ") + ", and " + keys.slice(-1)
+      : keys[0];
+
+    const speechText = `Your bookmarked places are ${destinations}`;
+    ss.addMetadata('speechText', speechText);
+
+    const handlerResponse = handlerInput.responseBuilder
+      .speak(speechText)
       .getResponse();
 
     ss.close();
@@ -162,7 +219,7 @@ const TraceShutdown = {
 
 // Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
-  .addRequestHandlers(LaunchRequestHandler, AuthorQuote)
+  .addRequestHandlers(LaunchRequestHandler, AuthorQuote, GetBookmarks)
   .addErrorHandlers(UnhandledHandler)
 //  .addRequestInterceptors(RequestLog)
   .addRequestInterceptors(TraceStartup)
