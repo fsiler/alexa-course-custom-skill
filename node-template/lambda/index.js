@@ -95,6 +95,8 @@ const AuthorQuote = {
 
     const [responseAuthor, quote] = actions.getQuote(Quotes, authorCandidate)
     if (!responseAuthor) {
+      ss.addError(`unable to look up quotes for author ${authorCandidate}`);
+//      ss.addErrorFlag();
       ss.close();
       return UnhandledHandler.handle(handlerInput, `invalid author ${authorCandidate}`);
     }
@@ -145,6 +147,8 @@ const GetBookmarks = {
 
     const handlerResponse = handlerInput.responseBuilder
       .speak(speechText)
+      .withSimpleCard("My Bookmarked Locations", destinations)
+      .withShouldEndSession(true)
       .getResponse();
 
     ss.close();
