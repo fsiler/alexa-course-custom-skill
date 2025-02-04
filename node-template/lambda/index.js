@@ -193,12 +193,15 @@ const TableName = {
 
     ss.addMetadata('ddbEntry', JSON.stringify(entry));
 
+    // interestingly, we need ot make a sort of fake parent to pass in- which
+    // we don't sample- because ddb adds its own subsegments
+    const ddb_ss = segment.addNewSubsegmentWithoutSampling('ddb');
     ddb = AWSXRay.captureAWSClient(new AWS.DynamoDB({
       apiVersion: "2012-08-10",
       sslEnabled: false,
       paramValidation: false,
       convertResponseTypes: false
-    }), ss);
+    }), ddb_ss);
 
     ddb.putItem(entry, function (err, data) {
       if (err) {
@@ -207,6 +210,7 @@ const TableName = {
         console.log("Success", data);
       }
     });
+    ddb_ss.close();
 
 //    ddb.listTables({}, function(err, data) {
 //      if (err) console.log(err, err.stack); // an error occurred
