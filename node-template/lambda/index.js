@@ -1,7 +1,10 @@
 const Alexa   = require("ask-sdk-core");
+const AWS     = require('aws-sdk');
 const AWSXRay = require('aws-xray-sdk-core');
 //AWSXRay.captureAWS(require('aws-sdk'));  # Lots of overhead if you do this.
 AWSXRay.enableManualMode();
+
+var ddb;
 
 var segment;
 
@@ -55,7 +58,7 @@ const LaunchRequestHandler = {
     ss.addAnnotation('handler', 'launchHandler');
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
-    const speechText = `Hi I am ${process.env.SKILL_NAME}, your cloud based personal assistant.  You can ask me to read quotes from Einstein or Lincoln, or ask me to get route information.`;
+    const speechText = `Hi I am ${process.env.SKILL_NAME}, your cloud based personal assistant.`;
     const repromptText = "Sorry, I didn't catch that.  Do you need help?";
 
     ss.addMetadata('quote', speechText);
@@ -156,6 +159,73 @@ const GetBookmarks = {
   }
 };
 
+const TableName = {
+  canHandle(handlerInput) {
+    return (
+        handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+        handlerInput.requestEnvelope.request.intent.name === "TableName"
+        );
+  },
+  handle(handlerInput) {
+    const ss = segment.addNewSubsegment('TableName');
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
+    const sReq = handlerInput.requestEnvelope.request;
+    ss.addAnnotation('intent', sReq.intent.name);
+
+    const tableName = process.env.DDB_TABLE_NAME
+    const pk = handlerInput.requestEnvelope?.context?.System?.person?.personId || handlerInput.requestEnvelope?.context?.System?.user?.userId;
+    const now = new Date();
+    const sk = now.toISOString();
+
+    const entry = {
+      "TableName": tableName,
+      "Item": {
+        "pk": {"S": pk},
+        "sk": {"S": sk},
+        "Weight": {"N": "2"},
+        "message":{"S": "frank was here"}
+      },
+      "XRaySegment": ss
+    };
+
+    ss.addMetadata('ddbEntry', JSON.stringify(entry));
+
+    ddb = AWSXRay.captureAWSClient(new AWS.DynamoDB(), ss);
+    ddb.putItem(entry, function (err, data) {
+      if (err) {
+        console.log("Error", err);
+      } else {
+        console.log("Success", data);
+      }
+    });
+
+//    ddb.listTables({}, function(err, data) {
+//      if (err) console.log(err, err.stack); // an error occurred
+//      else     console.log(data);           // successful response
+//    });
+
+    const keys = Object.keys(Bookmarks)
+    const destinations = keys.length > 1
+      ? keys.slice(0, -1).join(", ") + ", and " + keys.slice(-1)
+      : keys[0];
+
+    const speechText = `Your bookmarked places are ${destinations}`;
+    ss.addMetadata('speechText', speechText);
+
+    const handlerResponse = handlerInput.responseBuilder
+      .speak(speechText)
+      .withSimpleCard("My Bookmarked Locations", destinations)
+      .withShouldEndSession(true)
+      .getResponse();
+
+    ss.close();
+    return handlerResponse;
+  }
+};
+
 const UnhandledHandler = {
   canHandle() {
     return true;
@@ -223,7 +293,7 @@ const TraceShutdown = {
 
 // Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
-  .addRequestHandlers(LaunchRequestHandler, AuthorQuote, GetBookmarks)
+  .addRequestHandlers(LaunchRequestHandler, AuthorQuote, GetBookmarks, TableName)
   .addErrorHandlers(UnhandledHandler)
 //  .addRequestInterceptors(RequestLog)
   .addRequestInterceptors(TraceStartup)

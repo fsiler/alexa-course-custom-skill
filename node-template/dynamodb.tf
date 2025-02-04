@@ -2,6 +2,17 @@ data "aws_iam_policy_document" "lambda_dynamodb" {
   statement {
     effect = "Allow"
 
+    resources = ["arn:aws:dynamodb:*:*:table/*"]
+
+    actions = [
+        "dynamodb:ListTables"
+    ]
+  }
+
+  statement {
+
+    effect = "Allow"
+
     resources = ["arn:aws:dynamodb:*:*:table/${local.config.hows_your_day.lambda.name}"]
 
     actions = [
