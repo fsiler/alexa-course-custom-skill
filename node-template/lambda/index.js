@@ -193,7 +193,7 @@ const TableName = {
 
     ss.addMetadata('ddbEntry', JSON.stringify(entry));
 
-    ddb = AWSXRay.captureAWSClient(new AWS.DynamoDB(), ss);
+    ddb = AWSXRay.captureAWSClient(new AWS.DynamoDB({ apiVersion: "2012-08-10" }), ss);
     ddb.putItem(entry, function (err, data) {
       if (err) {
         console.log("Error", err);
