@@ -1,3 +1,6 @@
+const AWSXRay = require('aws-xray-sdk-core');
+const https = AWSXRay.captureHTTPs(require('https'))
+
 const myfunctions = {
   getQuote: function(quotes, author) {
     if(author === undefined) {

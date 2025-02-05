@@ -13,7 +13,7 @@ const actions = require("./functions");
 const user_origin = "38.6774017,-90.3959057";
 const Bookmarks = {
   "my parents": "38.8052151,-90.5672943",
-  "my in laws": "38.6082336,-90.5332682",
+  "my in-laws": "38.6082336,-90.5332682",
   "the airport": "38.7505605,-90.3814042"
 };
 var user_destination = "XXXXXX"; // keep it as XXXXXX as it will be replaced later
@@ -53,7 +53,7 @@ const LaunchRequestHandler = {
     return handlerInput.requestEnvelope.request.type === "LaunchRequest";
   },
   handle(handlerInput) {
-    const ss = segment.addNewSubsegment('LauchRequestHandler');
+    const ss = segment.addNewSubsegment('LaunchRequestHandler');
     ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
     ss.addAnnotation('handler', 'launchHandler');
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
@@ -236,6 +236,139 @@ const TableName = {
   }
 };
 
+// Get Route Intent Handler
+const GetRoute = {
+  canHandle(handlerInput) {
+    return (
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "GetRoute"
+      );
+  },
+  // It will be an asynchronous function
+  async handle(handlerInput) {
+    const ss = segment.addNewSubsegment('GetRoute');
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addAnnotation('handler', 'launchHandler');
+    ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
+    // The slot information
+    let slotdata = handlerInput.requestEnvelope.request.intent.slots;
+    console.log("Slot Values --> " + JSON.stringify(slotdata));
+
+    let speechText = "";
+
+    // destination address - can be the bookmark's coordinates or a postal address
+    let destination = "";
+
+    // what alexa sould speak out once a destination is provided
+    let speakdestination = "";
+
+   // The slot value
+   let slot = "";
+
+   // Get the "destination" from the "slot value"
+   if (slotdata.destination.value) {
+     slot = slotdata.destination.value.toLowerCase();
+     console.log("Destination Slot was detected. The value is " + slot);
+   }
+
+   // First try to get the value from bookmarks
+   if (Bookmarks[slot]) {
+     destination = Bookmarks[slot];
+     speakdestination = slot.replace("my ", "your ");
+   } else {
+     destination = slot;
+     speakdestination = destination;
+   }
+   ss.addAnnotation('destination', destination);
+
+   // If there is no destination available, ask for the destination
+   if (destination === "") {
+     console.log("Destination is blank");
+
+     let speechText = "Where would you like to go today?";
+     let repromptText = "Sorry, I did not receive any input. Do you want me to read out your bookmarked destinations?";
+
+     handlerInput.attributesManager.setSessionAttributes({
+       type: "bookmarks"
+     });
+
+     return handlerInput.responseBuilder
+      .speak(speechText)
+      .reprompt(repromptText)
+      .getResponse();
+   }
+
+   console.log("Destination is not blank");
+
+   // Prepare the final google API path
+   // replacing XXXXXX (user_destination variable) with a url encoded version of the actual destination
+   let final_api_path = google_api_path.replace(user_destination, encodeURIComponent(destination));
+
+   // https "options"
+   let options = {
+     host: google_api_host,
+     path: final_api_path,
+     method: "GET"
+   };
+
+   // Log the complete Google URL for your review / cloudwatch
+   console.log("Google API Path --> https://" + google_api_host + final_api_path);
+
+   try {
+     let jsondata = await actions.getData(options);
+     console.log(jsondata);
+
+     // 1. Check the status first
+     let status = jsondata.status;
+
+     if (status == "OK") {
+
+        // Get the duration in traffic from the json array
+        let duration = jsondata.routes[0].legs[0].duration_in_traffic.text;
+
+        // Google API returns "min" in response. Replace the "min" with "minute" (OPTIONAL)
+        // duration = duration.replace("min","minute");
+
+        // Get the value in seconds too so that you can do the time calculation
+        let seconds = jsondata.routes[0].legs[0].duration_in_traffic.value;
+
+        // Initialise a new date, add 300 seconds (5 minutes) to it,
+        // to compensate for the delay it will take to get to your vehicle.
+        // Then get the hour and the minute only, and not the complete date.
+        let nd = new Date();
+        let ld = new Date(nd.getTime() + (seconds + 300 )* 1000);
+        //let timeinhhmm = ld.toLocaleTimeString("en-US", {
+        //  hour: "2-digit",
+        //  minute: "2-digit"
+        //});
+
+        let timeinhhmm = ld.toLocaleTimeString("en-US", {timeZone: 'US/Central', hour:'2-digit', minute: '2-digit'});
+        // https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+
+        speechText = "It will take you " + duration + " to reach " + speakdestination + ". You will reach around " +
+                     "<say-as interpret-as='time'>" + timeinhhmm + "</say-as> if you leave within 5 minutes";
+
+      } else {
+        speechText = "Sorry, I was not able to get traffic information for your destination " + speakdestination + ". Please try a different destination";
+        ss.addError(speechText);
+        ss.addErrorFlag();
+      }
+    } catch (error) {
+      speechText = "Sorry, an error occurred getting data from Google. Please try again.";
+      ss.addError(speechText);
+      ss.addErrorFlag();
+    }
+
+    const handlerResponse = handlerInput.responseBuilder
+      .speak(speechText)
+      .getResponse();
+    ss.close();
+    return handlerResponse;
+  }
+};
+
+
 const UnhandledHandler = {
   canHandle() {
     return true;
@@ -303,7 +436,12 @@ const TraceShutdown = {
 
 // Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
-  .addRequestHandlers(LaunchRequestHandler, AuthorQuote, GetBookmarks, TableName)
+  .addRequestHandlers(
+    LaunchRequestHandler,
+    AuthorQuote,
+    GetBookmarks,
+    TableName,
+    GetRoute)
   .addErrorHandlers(UnhandledHandler)
 //  .addRequestInterceptors(RequestLog)
   .addRequestInterceptors(TraceStartup)
