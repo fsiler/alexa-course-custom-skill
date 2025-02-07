@@ -1,7 +1,13 @@
 const Alexa   = require("ask-sdk-core");
 const AWS     = require('aws-sdk');
 const AWSXRay = require('aws-xray-sdk-core');
-const https   = AWSXRay.captureHTTPs(require('https'))
+
+function https_callback(ss, cr, im) {
+  console.log("https_callback was here");
+  ss.addMetadata("https.ClientRequest.headers", JSON.stringify(cr.getHeaders()));
+  ss.addMetadata("https.IncomingMessage.headers", JSON.stringify(im?.headers));
+}
+const https   = AWSXRay.captureHTTPs(require('https'), false, https_callback);
 //AWSXRay.captureAWS(require('aws-sdk'));  # Lots of overhead if you do this.
 AWSXRay.enableManualMode();
 
