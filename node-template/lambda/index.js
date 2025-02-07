@@ -55,7 +55,6 @@ const LaunchRequestHandler = {
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('LaunchRequestHandler');
     ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
-    ss.addAnnotation('handler', 'launchHandler');
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const speechText = `Hi I am ${process.env.SKILL_NAME}, your cloud based personal assistant.`;
@@ -248,7 +247,6 @@ const GetRoute = {
   async handle(handlerInput) {
     const ss = segment.addNewSubsegment('GetRoute');
     ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
-    ss.addAnnotation('handler', 'launchHandler');
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     // The slot information
@@ -368,6 +366,20 @@ const GetRoute = {
   }
 };
 
+const SessionEndedHandler = {
+  canHandle(handlerInput) {
+    return handlerInput.requestEnvelope.request.type === "SessionEndedRequest";
+  },
+  handle(handlerInput) {
+    const ss = segment.addNewSubsegment('SessionEndedHandler');
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+    const reason = handlerInput.requestEnvelope?.request?.reason;
+    segment.addError(`${reason}`);
+
+    ss.close();
+  }
+};
 
 const UnhandledHandler = {
   canHandle() {
@@ -441,7 +453,8 @@ exports.handler = Alexa.SkillBuilders.custom()
     AuthorQuote,
     GetBookmarks,
     TableName,
-    GetRoute)
+    GetRoute,
+    SessionEndedHandler)
   .addErrorHandlers(UnhandledHandler)
 //  .addRequestInterceptors(RequestLog)
   .addRequestInterceptors(TraceStartup)
