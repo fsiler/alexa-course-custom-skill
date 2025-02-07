@@ -1,5 +1,3 @@
-const AWSXRay = require('aws-xray-sdk-core');
-const https = AWSXRay.captureHTTPs(require('https'))
 
 const myfunctions = {
   getQuote: function(quotes, author) {
@@ -29,21 +27,21 @@ const myfunctions = {
     const quote = quotes[lookupAuthor][lookupIndex]
     return [lookupAuthor, quote];
   },
-getData: function(options, postData) {
+  getData: function(http_handler, options, postData) {
     return new Promise(function(resolve,reject) {
-      var request = https.request(options, function(response) {
+      var request = http_handler.request(options, function(response) {
         // reject if status is not 2xxx
         if (response.statusCode < 200 || response.statusCode >= 300) {
           return reject(new Error("statusCode=" + response.statusCode));
         }
-        
+
         // Status is in 2xx
         // cumulate data
         var body = [];
         response.on("data", function (chunk) {
           body.push(chunk);
         });
-        
+
         // when process ends
         response.on("end", function() {
           try {
@@ -65,7 +63,7 @@ getData: function(options, postData) {
       if (postData) {
         request.write(postData);
       }
-      
+
       // End the request. It's Important
       request.end();
     }); // promise ends

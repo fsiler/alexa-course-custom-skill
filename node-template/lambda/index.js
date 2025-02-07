@@ -1,6 +1,7 @@
 const Alexa   = require("ask-sdk-core");
 const AWS     = require('aws-sdk');
 const AWSXRay = require('aws-xray-sdk-core');
+const https   = AWSXRay.captureHTTPs(require('https'))
 //AWSXRay.captureAWS(require('aws-sdk'));  # Lots of overhead if you do this.
 AWSXRay.enableManualMode();
 
@@ -12,9 +13,10 @@ const actions = require("./functions");
 
 const user_origin = "38.6774017,-90.3959057";
 const Bookmarks = {
-  "my parents": "38.8052151,-90.5672943",
-  "my in-laws": "38.6082336,-90.5332682",
-  "the airport": "38.7505605,-90.3814042"
+  "my parents":  "38.8052151,-90.5672943",
+  "my in-laws":  "38.6082336,-90.5332682",
+  "the airport": "38.7505605,-90.3814042",
+  "the heights": "38.6287303,-90.3337296"
 };
 var user_destination = "XXXXXX"; // keep it as XXXXXX as it will be replaced later
 const google_api_key = process.env.GOOGLE_API_KEY;
@@ -307,14 +309,15 @@ const GetRoute = {
    let options = {
      host: google_api_host,
      path: final_api_path,
-     method: "GET"
+     method: "GET",
+     XRaySegment: ss
    };
 
    // Log the complete Google URL for your review / cloudwatch
    console.log("Google API Path --> https://" + google_api_host + final_api_path);
 
    try {
-     let jsondata = await actions.getData(options);
+     let jsondata = await actions.getData(AWSXRay.captureHTTPs(https), options);
      console.log(jsondata);
 
      // 1. Check the status first
