@@ -23,6 +23,8 @@ resource "aws_lambda_function" "alexa_lambda" {
       DDB_TABLE_NAME     = local.config.hows_your_day.lambda.name
       SKILL_NAME         = local.config.hows_your_day.skill_name
       GOOGLE_API_KEY     = local.config.hows_your_day.google.api_key
+      BOOKMARKS          = local.config.hows_your_day.bookmarks
+      USER_ORIGIN        = local.config.hows_your_day.user_origin
 //      AWS_XRAY_LOG_LEVEL = "debug"
     }
   }

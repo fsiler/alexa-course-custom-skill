@@ -21,13 +21,8 @@ var segment;
 
 const actions = require("./functions");
 
-const user_origin = "38.6774017,-90.3959057";
-const Bookmarks = {
-  "my parents":  "38.8052151,-90.5672943",
-  "my in-laws":  "38.6082336,-90.5332682",
-  "the airport": "38.7505605,-90.3814042",
-  "the heights": "38.6287303,-90.3337296"
-};
+const user_origin = process.env.USER_ORIGIN
+const Bookmarks = JSON.parse(process.env.BOOKMARKS || {});
 var user_destination = "XXXXXX"; // keep it as XXXXXX as it will be replaced later
 const google_api_key = process.env.GOOGLE_API_KEY;
 
@@ -73,6 +68,8 @@ const LaunchRequestHandler = {
     const repromptText = "Sorry, I didn't catch that.  Do you need help?";
 
     ss.addMetadata('quote', speechText);
+
+    handlerInput.attributesManager.setSessionAttributes({ type: "help"});
 
     // Speak out the speechText via Alexa
     const handlerResponse = handlerInput.responseBuilder
@@ -167,6 +164,108 @@ const GetBookmarks = {
 
     ss.close();
     return handlerResponse;
+  }
+};
+
+const HelpIntent = {
+  canHandle(handlerInput) {
+    return (
+        handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+        handlerInput.requestEnvelope.request.intent.name === "AMAZON.HelpIntent"
+        );
+  },
+  handle(handlerInput) {
+    const ss = segment.addNewSubsegment('HelpIntent');
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
+    const request = handlerInput.requestEnvelope.request;
+    ss.addAnnotation('intent', request.intent.name);
+
+    const attributes = { type: "bookmarks" };
+    handlerInput.attributesManager.setSessionAttributes(attributes);
+
+    let speechText = "I have the ability to read out quotes and get route information. To read out quotes, you can try saying, ask Eva for a random quote, or ask Eva for a quote from Einstein. To get route information you can try saying, ask Eva, how much time will it take you to reach office? I also have a few places bookmarked for easy access. Do you want me to read them out to you?";
+
+    let repromptText = "Sorry, I did not receive any input. Do you want me to read out your bookmarked destinations?";
+
+    const handlerResponse = handlerInput.responseBuilder
+      .speak(speechText)
+      .reprompt(repromptText)
+      .getResponse();
+
+    ss.close();
+    return handlerResponse;
+  }
+};
+
+// If the user said "Yes" to anything
+const YesIntent = {
+  canHandle(handlerInput) {
+    return (
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "AMAZON.YesIntent"
+      );
+  },
+  handle(handlerInput) {
+    console.log("AMAZON.YesIntent intent handler called");
+
+    let attributes = handlerInput.attributesManager.getSessionAttributes();
+    let speechText = "";
+
+    if (attributes.type) {
+      switch (attributes.type) {
+        case "bookmarks":
+          return GetBookmarks.handle(handlerInput);
+        case "help":
+          return HelpIntent.handle(handlerInput);
+
+        default:
+          speechText = "Sorry, I do not understand how to process that.";
+      }
+
+    } else {
+      speechText = "Sorry, I am not sure what you are saying Yes for.";
+    }
+
+    return handlerInput.responseBuilder
+      .speak(speechText)
+      .getResponse();
+  }
+};
+
+// When the user says "No" to a request
+const NoIntent = {
+  canHandle(handlerInput) {
+    return (
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "AMAZON.NoIntent"
+      );
+  },
+  handle(handlerInput) {
+    console.log("NoIntent intent handler called");
+    return handlerInput.responseBuilder
+      .getResponse();
+  }
+};
+
+// Gracefully handle any intent that wasn't handled
+const Fallback = {
+  canHandle(handlerInput) {
+    return (
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "AMAZON.FallbackIntent"
+      );
+  },
+  handle(handlerInput) {
+    console.log("FallbackIntent Handler called");
+
+    let speechText = "Sorry, I wasn't able to understand what you said. Thank you and good bye.";
+
+    return handlerInput.responseBuilder
+      .speak(speechText)
+      .getResponse();
   }
 };
 
@@ -398,7 +497,7 @@ const UnhandledHandler = {
     ss.addError(error);
     ss.addErrorFlag();
     const handlerResponse = handlerInput.responseBuilder
-      .speak(`Sorry, I can't understand.  Do you need help?`)
+      .speak(`Sorry, I can't understand.`)
       .getResponse();
 
     ss.close();
@@ -460,7 +559,11 @@ exports.handler = Alexa.SkillBuilders.custom()
     AuthorQuote,
     GetBookmarks,
     TableName,
+    HelpIntent,
     GetRoute,
+    YesIntent,
+    NoIntent,
+    Fallback,
     SessionEndedHandler)
   .addErrorHandlers(UnhandledHandler)
 //  .addRequestInterceptors(RequestLog)
