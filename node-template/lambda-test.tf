@@ -3,6 +3,7 @@ resource "aws_schemas_registry" "alexa_lambda_test_registry" {
   description = "Lambda Test Events"
 }
 
+# concept courtesy https://www.tecracer.com/blog/2022/08/prepopulate-lambda-console-testevents-without-dirty-manual-work-using-terraform.html
 resource "aws_schemas_schema" "alexa_lambda_test" {
   name          = "_${local.config.hows_your_day.lambda.name}-schema"
   registry_name = "lambda-testevent-schemas"
