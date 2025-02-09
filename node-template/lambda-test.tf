@@ -32,9 +32,52 @@ resource "aws_schemas_schema" "alexa_lambda_test" {
         }
       },
       "examples": {
-        "Parameter1": {
+        "TimeToAirport": {
           "value": {
-            "key1": "value1"
+            "version": "1.0",
+            "session": {
+              "new": false,
+              "sessionId": "amzn1.echo-api.session.123456789012",
+              "application": {
+                "applicationId": "amzn1.ask.skill.987654321"
+              },
+              "attributes": {},
+              "user": {
+                "userId": "amzn1.ask.account.testUser"
+              }
+            },
+            "context": {
+              "AudioPlayer": {
+                "playerActivity": "IDLE"
+              },
+              "System": {
+                "application": {
+                  "applicationId": "amzn1.ask.skill.987654321"
+                },
+                "user": {
+                  "userId": "amzn1.ask.account.testUser"
+                },
+                "device": {
+                  "supportedInterfaces": {
+                    "AudioPlayer": {}
+                  }
+                }
+              }
+            },
+            "request": {
+              "type": "IntentRequest",
+              "requestId": "amzn1.echo-api.request.1234",
+              "timestamp": "2016-10-27T21:06:28Z",
+              "locale": "en-US",
+              "intent": {
+                "name": "GetRoute",
+                "slots": {
+                  "destination": {
+                     "value": "the airport"
+                  }
+                }
+              }
+            }
           }
         },
         "Parameter2": {
