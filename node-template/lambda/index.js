@@ -373,7 +373,7 @@ const GetRoute = {
     // Get the "destination" from the "slot value"
     if (slotdata.destination.value) {
       slot = slotdata.destination.value.toLowerCase();
-      console.log("Destination Slot was detected. The value is " + slot);
+      ss.addAnnotation('slotDestination', slot);
     }
 
     // First try to get the value from bookmarks
@@ -393,9 +393,7 @@ const GetRoute = {
       speechText = "Where would you like to go today?";
       repromptText = "Sorry, I did not receive any input. Do you want me to read out your bookmarked destinations?";
 
-      handlerInput.attributesManager.setSessionAttributes({
-        type: "bookmarks"
-      });
+      handlerInput.attributesManager.setSessionAttributes({ type: "bookmarks" });
 
       return handlerInput.responseBuilder
        .speak(speechText)
