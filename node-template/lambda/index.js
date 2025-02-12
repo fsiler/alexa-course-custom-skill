@@ -16,8 +16,8 @@ const https   = AWSXRay.captureHTTPs(require('https'), false, https_callback);
 AWSXRay.enableManualMode();
 
 var ddb;
-
 var segment;
+var personId;
 
 const actions = require("./functions");
 
@@ -61,7 +61,7 @@ const LaunchRequestHandler = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('LaunchRequestHandler');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const speechText = `Hi I am ${process.env.SKILL_NAME}, your cloud based personal assistant.`;
@@ -94,8 +94,8 @@ const AuthorQuote = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('AuthorQuote');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const request = handlerInput.requestEnvelope.request;
@@ -141,8 +141,8 @@ const GetBookmarks = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('GetBookmarks');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const request = handlerInput.requestEnvelope.request;
@@ -176,8 +176,8 @@ const HelpIntent = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('HelpIntent');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const request = handlerInput.requestEnvelope.request;
@@ -278,8 +278,8 @@ const TableName = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('TableName');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput));
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
+    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const sReq = handlerInput.requestEnvelope.request;
@@ -300,7 +300,7 @@ const TableName = {
       },
       "XRaySegment": ss
     };
-    ss.addMetadata('ddbEntry', JSON.stringify(entry));
+    ss.addMetadata('ddbEntry', JSON.stringify(entry, null, 2));
     ddb = AWSXRay.captureAWSClient(new AWS.DynamoDB({
       apiVersion: "2012-08-10",
       sslEnabled: false,
@@ -351,12 +351,13 @@ const GetRoute = {
   // It will be an asynchronous function
   async handle(handlerInput) {
     const ss = segment.addNewSubsegment('GetRoute');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+    ss.addAnnotation('personId', personId);
 
     // The slot information
-    let slotdata = handlerInput.requestEnvelope.request.intent.slots;
-    console.log("Slot Values --> " + JSON.stringify(slotdata));
+    const slotdata = handlerInput.requestEnvelope.request.intent.slots;
+    ss.addMetadata("slotValues", slotdata);
 
     let speechText = "";
 
@@ -366,109 +367,107 @@ const GetRoute = {
     // what alexa sould speak out once a destination is provided
     let speakdestination = "";
 
-   // The slot value
-   let slot = "";
+    // The slot value
+    let slot = "";
 
-   // Get the "destination" from the "slot value"
-   if (slotdata.destination.value) {
-     slot = slotdata.destination.value.toLowerCase();
-     console.log("Destination Slot was detected. The value is " + slot);
-   }
+    // Get the "destination" from the "slot value"
+    if (slotdata.destination.value) {
+      slot = slotdata.destination.value.toLowerCase();
+      console.log("Destination Slot was detected. The value is " + slot);
+    }
 
-   // First try to get the value from bookmarks
-   if (Bookmarks[slot]) {
-     destination = Bookmarks[slot];
-     speakdestination = slot.replace("my ", "your ");
-   } else {
-     destination = slot;
-     speakdestination = destination;
-   }
-   ss.addAnnotation('destination', destination);
+    // First try to get the value from bookmarks
+    if (Bookmarks[slot]) {
+      destination = Bookmarks[slot];
+      speakdestination = slot.replace("my ", "your ");
+    } else {
+      destination = slot;
+      speakdestination = destination;
+    }
+    ss.addAnnotation('destination', destination);
 
-   // If there is no destination available, ask for the destination
-   if (destination === "") {
-     console.log("Destination is blank");
+    // If there is no destination available, ask for the destination
+    if (destination === "") {
+      console.log("Destination is blank");
 
-     let speechText = "Where would you like to go today?";
-     let repromptText = "Sorry, I did not receive any input. Do you want me to read out your bookmarked destinations?";
+      speechText = "Where would you like to go today?";
+      repromptText = "Sorry, I did not receive any input. Do you want me to read out your bookmarked destinations?";
 
-     handlerInput.attributesManager.setSessionAttributes({
-       type: "bookmarks"
-     });
+      handlerInput.attributesManager.setSessionAttributes({
+        type: "bookmarks"
+      });
 
-     return handlerInput.responseBuilder
-      .speak(speechText)
-      .reprompt(repromptText)
-      .getResponse();
-   }
+      return handlerInput.responseBuilder
+       .speak(speechText)
+       .reprompt(repromptText)
+       .getResponse();
+    }
 
-   console.log("Destination is not blank");
+    console.log("Destination is not blank");
 
-   // Prepare the final google API path
-   // replacing XXXXXX (user_destination variable) with a url encoded version of the actual destination
-   let final_api_path = google_api_path.replace(user_destination, encodeURIComponent(destination));
+    // Prepare the final google API path
+    // replacing XXXXXX (user_destination variable) with a url encoded version of the actual destination
+    const final_api_path = google_api_path.replace(user_destination, encodeURIComponent(destination));
 
-   // https "options"
-   let options = {
-     host: google_api_host,
-     path: final_api_path,
-     method: "GET",
-     XRaySegment: ss
-   };
+    // https "options"
+    const options = {
+      host: google_api_host,
+      path: final_api_path,
+      method: "GET",
+      XRaySegment: ss
+    };
 
-   // Log the complete Google URL for your review / cloudwatch
-   console.log("Google API Path --> https://" + google_api_host + final_api_path);
+    // Log the complete Google URL for your review / cloudwatch
+    ss.addAnnotation("googleMapsUrl", `https://${google_api_host}${final_api_path}`);
 
-   try {
-     let jsondata = await actions.getData(https, options);
-     console.log(jsondata);
+    try {
+      const jsondata = await actions.getData(https, options);
+      ss.addMetadata("googleMapsJsonData", jsondata);
 
-     // 1. Check the status first
-     let status = jsondata.status;
+      // 1. Check the status first
+      const status = jsondata.status;
 
-     if (status == "OK") {
-
+      if (status == "OK") {
         // Get the duration in traffic from the json array
-        let duration = jsondata.routes[0].legs[0].duration_in_traffic.text;
+        const duration = jsondata.routes[0].legs[0].duration_in_traffic.text;
 
         // Google API returns "min" in response. Replace the "min" with "minute" (OPTIONAL)
         // duration = duration.replace("min","minute");
 
         // Get the value in seconds too so that you can do the time calculation
-        let seconds = jsondata.routes[0].legs[0].duration_in_traffic.value;
+        const seconds = jsondata.routes[0].legs[0].duration_in_traffic.value;
 
         // Initialise a new date, add 300 seconds (5 minutes) to it,
         // to compensate for the delay it will take to get to your vehicle.
         // Then get the hour and the minute only, and not the complete date.
-        let nd = new Date();
-        let ld = new Date(nd.getTime() + (seconds + 300 )* 1000);
+        const nd = new Date();
+        const ld = new Date(nd.getTime() + (seconds + 300 )* 1000);
         //let timeinhhmm = ld.toLocaleTimeString("en-US", {
         //  hour: "2-digit",
         //  minute: "2-digit"
         //});
 
-        let timeinhhmm = ld.toLocaleTimeString("en-US", {timeZone: 'US/Central', hour:'2-digit', minute: '2-digit'});
+        const timeinhhmm = ld.toLocaleTimeString("en-US", {timeZone: 'US/Central', hour:'2-digit', minute: '2-digit'});
         // https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
         speechText = "It will take you " + duration + " to reach " + speakdestination + ". You will reach around " +
                      "<say-as interpret-as='time'>" + timeinhhmm + "</say-as> if you leave within 5 minutes";
+       } else {
+         speechText = "Sorry, I was not able to get traffic information for your destination " + speakdestination + ". Please try a different destination";
+         ss.addError(speechText);
+         ss.addErrorFlag();
+       }
+     } catch (error) {
+       speechText = "Sorry, an error occurred getting data from Google. Please try again.";
+       ss.addError(speechText);
+       ss.addErrorFlag();
+     }
 
-      } else {
-        speechText = "Sorry, I was not able to get traffic information for your destination " + speakdestination + ". Please try a different destination";
-        ss.addError(speechText);
-        ss.addErrorFlag();
-      }
-    } catch (error) {
-      speechText = "Sorry, an error occurred getting data from Google. Please try again.";
-      ss.addError(speechText);
-      ss.addErrorFlag();
-    }
-
-    const handlerResponse = handlerInput.responseBuilder
-      .speak(speechText)
-      .getResponse();
-    ss.close();
-    return handlerResponse;
+     const handlerResponse = handlerInput.responseBuilder
+       .speak(speechText)
+       .getResponse();
+     ss.close();
+     return handlerResponse;
   }
 };
 
@@ -478,7 +477,7 @@ const SessionEndedHandler = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('SessionEndedHandler');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
     const reason = handlerInput.requestEnvelope?.request?.reason;
     segment.addError(`${reason}`);
@@ -493,7 +492,7 @@ const UnhandledHandler = {
   },
   handle(handlerInput, error) {
     const ss = segment.addNewSubsegment('UnhandledHandler');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope));
+    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
     ss.addError(error);
     ss.addErrorFlag();
     const handlerResponse = handlerInput.responseBuilder
@@ -509,7 +508,7 @@ const UnhandledHandler = {
 // courtesy https://developer.amazon.com/en-US/blogs/alexa/post/0e2015e1-8be3-4513-94cb-da000c2c9db0/what-s-new-with-request-and-response-interceptors-in-the-alexa-skills-kit-sdk-for-node-j
 const RequestLog = {
   process(handlerInput) {
-    console.log("REQUEST ENVELOPE = " + JSON.stringify(handlerInput.requestEnvelope));
+    console.log("REQUEST ENVELOPE = " + JSON.stringify(handlerInput.requestEnvelope, null, 2));
   }
 };
 
@@ -540,8 +539,11 @@ const TraceStartup = {
 
     segment.addAnnotation('awsRequestId', handlerInput.context.awsRequestId);
 
-    segment.addMetadata('env',     JSON.stringify(process.env));
-    segment.addMetadata('context', JSON.stringify(handlerInput.context));
+    segment.addMetadata('env',     process.env);
+    segment.addMetadata('context', handlerInput.context);
+
+    personId = handlerInput?.requestEnvelope?.context?.System?.person?.personId || "(empty)";
+    segment.addAnnotation('personId', personId);
   }
 }
 
