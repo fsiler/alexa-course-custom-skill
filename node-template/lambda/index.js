@@ -94,8 +94,8 @@ const AuthorQuote = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('AuthorQuote');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
+    ss.addMetadata('handlerInput', handlerInput);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const request = handlerInput.requestEnvelope.request;
@@ -141,8 +141,8 @@ const GetBookmarks = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('GetBookmarks');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
+    ss.addMetadata('handlerInput', handlerInput);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const request = handlerInput.requestEnvelope.request;
@@ -176,8 +176,8 @@ const HelpIntent = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('HelpIntent');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
+    ss.addMetadata('handlerInput', handlerInput);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const request = handlerInput.requestEnvelope.request;
@@ -278,8 +278,8 @@ const TableName = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('TableName');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
-    ss.addMetadata('handlerInput', JSON.stringify(handlerInput, null, 2));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
+    ss.addMetadata('handlerInput', handlerInput);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
     const sReq = handlerInput.requestEnvelope.request;
@@ -300,7 +300,7 @@ const TableName = {
       },
       "XRaySegment": ss
     };
-    ss.addMetadata('ddbEntry', JSON.stringify(entry, null, 2));
+    ss.addMetadata('ddbEntry', entry);
     ddb = AWSXRay.captureAWSClient(new AWS.DynamoDB({
       apiVersion: "2012-08-10",
       sslEnabled: false,
@@ -477,7 +477,7 @@ const SessionEndedHandler = {
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('SessionEndedHandler');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
     const reason = handlerInput.requestEnvelope?.request?.reason;
     segment.addError(`${reason}`);
@@ -492,7 +492,7 @@ const UnhandledHandler = {
   },
   handle(handlerInput, error) {
     const ss = segment.addNewSubsegment('UnhandledHandler');
-    ss.addMetadata('requestEnvelope', JSON.stringify(handlerInput.requestEnvelope, null, 2));
+    ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addError(error);
     ss.addErrorFlag();
     const handlerResponse = handlerInput.responseBuilder
