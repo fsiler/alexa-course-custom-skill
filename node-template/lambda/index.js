@@ -15,6 +15,7 @@ const https   = AWSXRay.captureHTTPs(require('https'), false, https_callback);
 //AWSXRay.captureAWS(require('aws-sdk'));  # Lots of overhead if you do this.
 AWSXRay.enableManualMode();
 
+const emptySentinel = '(empty)';
 var ddb;
 var segment;
 var personId;
@@ -26,7 +27,7 @@ const Bookmarks = JSON.parse(process.env.BOOKMARKS || {});
 var user_destination = "XXXXXX"; // keep it as XXXXXX as it will be replaced later
 const google_api_key = process.env.GOOGLE_API_KEY;
 
-const google_api_traffic_model = "best_guess"; // it can be optimistic & pessimistic too
+const google_api_traffic_model  = "best_guess"; // it can be optimistic & pessimistic too
 const google_api_departure_time = "now"; // now will mean the current time
 
 const google_api_host = "maps.googleapis.com";
@@ -54,7 +55,19 @@ const Quotes = {
   ]
 };
 
-// The "LaunchRequest" intent handler - called when the skill is launched
+function checkPersonId(existing_ss, handlerInput) {
+  const ss = existing_ss.addNewSubsegment('checkPersonId');
+  let retVal = true;
+  ss.addMetadata('personId', personId);
+  if(!personId || personId === emptySentinel) {
+      handlerInput.attributesManager.setSessionAttributes({ type: "missingPersonId" });
+      ss.addErrorFlag();
+      retVal = false;
+  }
+  ss.close();
+  return retVal;
+}
+
 const LaunchRequestHandler = {
   canHandle(handlerInput) {
     return handlerInput.requestEnvelope.request.type === "LaunchRequest";
@@ -135,9 +148,9 @@ const AuthorQuote = {
 const GetBookmarks = {
   canHandle(handlerInput) {
     return (
-        handlerInput.requestEnvelope.request.type === "IntentRequest" &&
-        handlerInput.requestEnvelope.request.intent.name === "GetBookmarks"
-        );
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "GetBookmarks"
+    );
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('GetBookmarks');
@@ -170,9 +183,9 @@ const GetBookmarks = {
 const HelpIntent = {
   canHandle(handlerInput) {
     return (
-        handlerInput.requestEnvelope.request.type === "IntentRequest" &&
-        handlerInput.requestEnvelope.request.intent.name === "AMAZON.HelpIntent"
-        );
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "AMAZON.HelpIntent"
+    );
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('HelpIntent');
@@ -206,12 +219,12 @@ const YesIntent = {
     return (
       handlerInput.requestEnvelope.request.type === "IntentRequest" &&
       handlerInput.requestEnvelope.request.intent.name === "AMAZON.YesIntent"
-      );
+    );
   },
   handle(handlerInput) {
     console.log("AMAZON.YesIntent intent handler called");
 
-    let attributes = handlerInput.attributesManager.getSessionAttributes();
+    const attributes = handlerInput.attributesManager.getSessionAttributes();
     let speechText = "";
 
     if (attributes.type) {
@@ -235,13 +248,12 @@ const YesIntent = {
   }
 };
 
-// When the user says "No" to a request
 const NoIntent = {
   canHandle(handlerInput) {
     return (
       handlerInput.requestEnvelope.request.type === "IntentRequest" &&
       handlerInput.requestEnvelope.request.intent.name === "AMAZON.NoIntent"
-      );
+    );
   },
   handle(handlerInput) {
     console.log("NoIntent intent handler called");
@@ -250,13 +262,12 @@ const NoIntent = {
   }
 };
 
-// Gracefully handle any intent that wasn't handled
 const Fallback = {
   canHandle(handlerInput) {
     return (
       handlerInput.requestEnvelope.request.type === "IntentRequest" &&
       handlerInput.requestEnvelope.request.intent.name === "AMAZON.FallbackIntent"
-      );
+    );
   },
   handle(handlerInput) {
     console.log("FallbackIntent Handler called");
@@ -272,9 +283,9 @@ const Fallback = {
 const TableName = {
   canHandle(handlerInput) {
     return (
-        handlerInput.requestEnvelope.request.type === "IntentRequest" &&
-        handlerInput.requestEnvelope.request.intent.name === "TableName"
-        );
+      handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.intent.name === "TableName"
+    );
   },
   handle(handlerInput) {
     const ss = segment.addNewSubsegment('TableName');
@@ -340,13 +351,12 @@ const TableName = {
   }
 };
 
-// Get Route Intent Handler
 const GetRoute = {
   canHandle(handlerInput) {
     return (
       handlerInput.requestEnvelope.request.type === "IntentRequest" &&
       handlerInput.requestEnvelope.request.intent.name === "GetRoute"
-      );
+    );
   },
   // It will be an asynchronous function
   async handle(handlerInput) {
@@ -354,6 +364,11 @@ const GetRoute = {
     ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
     ss.addAnnotation('personId', personId);
+
+    if(!checkPersonId(ss, handlerInput)) {
+      ss.close();
+      return UnhandledHandler.handle(handlerInput, `missing PersonId`);
+    }
 
     // The slot information
     const slotdata = handlerInput.requestEnvelope.request.intent.slots;
@@ -485,16 +500,24 @@ const SessionEndedHandler = {
 };
 
 const UnhandledHandler = {
-  canHandle() {
-    return true;
-  },
+  canHandle() { return true; },
   handle(handlerInput, error) {
     const ss = segment.addNewSubsegment('UnhandledHandler');
     ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
-    ss.addError(error);
-    ss.addErrorFlag();
+    if(error) {
+      ss.addError(error);
+      ss.addErrorFlag();
+    }
+
+    let speechText = `Sorry, I can't understand.`;
+
+    const attributes = handlerInput.attributesManager.getSessionAttributes();
+    if (attributes.type && attributes.type == 'missingPersonId') {
+      speechText = `Sorry, I can't tell who you are.  You will need to set up your name in the Alexa app on your phone and say a few phrases so I can recognize your voice.`;
+    }
+
     const handlerResponse = handlerInput.responseBuilder
-      .speak(`Sorry, I can't understand.`)
+      .speak(speechText)
       .getResponse();
 
     ss.close();
@@ -540,7 +563,7 @@ const TraceStartup = {
     segment.addMetadata('env',     process.env);
     segment.addMetadata('context', handlerInput.context);
 
-    personId = handlerInput?.requestEnvelope?.context?.System?.person?.personId || "(empty)";
+    personId = handlerInput?.requestEnvelope?.context?.System?.person?.personId || emptySentinel;
     segment.addAnnotation('personId', personId);
   }
 }
@@ -552,7 +575,6 @@ const TraceShutdown = {
   }
 }
 
-// Register the handlers and make them ready for use in Lambda
 exports.handler = Alexa.SkillBuilders.custom()
   .addRequestHandlers(
     LaunchRequestHandler,
