@@ -77,6 +77,11 @@ const LaunchRequestHandler = {
     ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
 
+    if(!checkPersonId(ss, handlerInput)) {
+      ss.close();
+      return UnhandledHandler.handle(handlerInput, `missing PersonId`);
+    }
+
     const speechText = `Hi I am ${process.env.SKILL_NAME}, your cloud based personal assistant.`;
     const repromptText = "Sorry, I didn't catch that.  Do you need help?";
 
@@ -110,6 +115,11 @@ const AuthorQuote = {
     ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addMetadata('handlerInput', handlerInput);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
+    if(!checkPersonId(ss, handlerInput)) {
+      ss.close();
+      return UnhandledHandler.handle(handlerInput, `missing PersonId`);
+    }
 
     const request = handlerInput.requestEnvelope.request;
     ss.addAnnotation('intent', request.intent.name);
@@ -157,6 +167,11 @@ const GetBookmarks = {
     ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addMetadata('handlerInput', handlerInput);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
+    if(!checkPersonId(ss, handlerInput)) {
+      ss.close();
+      return UnhandledHandler.handle(handlerInput, `missing PersonId`);
+    }
 
     const request = handlerInput.requestEnvelope.request;
     ss.addAnnotation('intent', request.intent.name);
@@ -292,6 +307,11 @@ const TableName = {
     ss.addMetadata('requestEnvelope', handlerInput.requestEnvelope);
     ss.addMetadata('handlerInput', handlerInput);
     ss.addAnnotation('requestType', Alexa.getRequestType(handlerInput.requestEnvelope) );
+
+    if(!checkPersonId(ss, handlerInput)) {
+      ss.close();
+      return UnhandledHandler.handle(handlerInput, `missing PersonId`);
+    }
 
     const sReq = handlerInput.requestEnvelope.request;
     ss.addAnnotation('intent', sReq.intent.name);
@@ -569,7 +589,7 @@ const TraceStartup = {
 }
 
 const TraceShutdown = {
-  process(handlerInput) {
+  process(handlerInput, handlerResponse) {
     segment.close();
     segment.flush();
   }
